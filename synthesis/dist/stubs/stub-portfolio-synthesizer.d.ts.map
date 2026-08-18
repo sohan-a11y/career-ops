@@ -1,0 +1,1 @@
+{"version":3,"file":"stub-portfolio-synthesizer.d.ts","sourceRoot":"","sources":["../../src/stubs/stub-portfolio-synthesizer.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,KAAK,EAAE,qBAAqB,EAAE,kBAAkB,EAAE,MAAM,wCAAwC,CAAC;AACxG,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,2BAA2B,CAAC;AAE9D,qBAAa,wBAAyB,YAAW,qBAAqB;IAC9D,UAAU,CAAC,MAAM,EAAE,YAAY,GAAG,OAAO,CAAC,kBAAkB,CAAC;CAyCpE"}

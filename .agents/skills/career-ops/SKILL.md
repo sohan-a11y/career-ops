@@ -8,7 +8,7 @@ description: >-
 arguments: mode
 user_invocable: true
 user-invocable: true
-argument-hint: "[scan | discover | deep | pdf | latex | latex-tex | cover | email | add | expand | eu-swe | oferta | ofertas | apply | batch | tracker | agent-inbox | pipeline | contacto | training | project | interview-prep | interview | interview/plan | interview/practice | interview/debrief | interview-redflag | patterns | offer-prep | titles | upskill | followup | reply-watch | outcome | update]"
+argument-hint: "[scan | discover | roster | deep | pdf | latex | latex-tex | cover | email | add | expand | eu-swe | oferta | ofertas | apply | batch | tracker | agent-inbox | pipeline | contacto | training | project | interview-prep | interview | interview/plan | interview/practice | interview/debrief | interview-redflag | patterns | offer-prep | titles | upskill | followup | reply-watch | outcome | update]"
 license: MIT
 ---
 
@@ -68,6 +68,7 @@ Determine the mode from `$mode`:
 | `apply` | `apply` |
 | `scan` | `scan` |
 | `discover` | `discover` |
+| `roster` | `roster` |
 | `batch` | `batch` |
 | `patterns` | `patterns` |
 | `offer-prep` | `offer-prep` |
@@ -149,6 +150,7 @@ Available commands:
   /career-ops apply     → Live application assistant (reads form + generates answers)
   /career-ops scan      → Scan portals and discover new offers
   /career-ops discover  → Resolve a company list to scannable ATS boards + append to portals.yml (zero-token)
+  /career-ops roster {file.xlsx} → Excel company roster → resolve ATS boards + scan + full auto-pipeline, end to end
   /career-ops batch     → Batch processing with parallel workers
   /career-ops patterns  → Analyze rejection patterns and improve targeting
   /career-ops offer-prep → Read a received offer/contract with the candidate: clause walk + lawyer questions (not legal advice)
@@ -174,7 +176,7 @@ If `modes/_custom.md` exists, read it after `modes/_profile.md` and before the s
 
 Read `modes/_shared.md` + `modes/_profile.md` (if exists) + `modes/_custom.md` (if exists) + `modes/{mode}.md`
 
-Applies to: `auto-pipeline`, `oferta`, `ofertas`, `pdf`, `contacto`, `apply`, `pipeline`, `scan`, `batch`
+Applies to: `auto-pipeline`, `oferta`, `ofertas`, `pdf`, `contacto`, `apply`, `pipeline`, `scan`, `batch`, `roster`
 
 ### Standalone modes with profile and custom context
 
@@ -184,7 +186,7 @@ Applies to: `tracker`, `agent-inbox`, `deep`, `interview-prep`, `interview`, `re
 
 ### Modes delegated to subagent
 
-For `scan`, `apply` (with Playwright), and `pipeline` (3+ URLs): launch as a worker/subagent with the content of `_shared.md` + `_profile.md` (if exists) + `_custom.md` (if exists) + `modes/{mode}.md` injected into the worker prompt. If your CLI exposes an `Agent(...)` primitive, the call looks like this:
+For `scan`, `apply` (with Playwright), `pipeline` (3+ URLs), and `roster` (its Step 5 hand-off into `pipeline`'s 3+ URL case): launch as a worker/subagent with the content of `_shared.md` + `_profile.md` (if exists) + `_custom.md` (if exists) + `modes/{mode}.md` injected into the worker prompt. If your CLI exposes an `Agent(...)` primitive, the call looks like this:
 
 ```python
 Agent(

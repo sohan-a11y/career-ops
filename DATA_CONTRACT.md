@@ -33,6 +33,8 @@ These files contain your personal data, customizations, and work product. Update
 | `data/scan-history.tsv` | Your scan history (tab-separated, append-only trailing columns; col 8: local SimHash JD fingerprint for cross-listing detection, col 9: posting date, cols 10-11: trust score/flags, col 12: normalized company key for repost/name matching). Older rows may have fewer columns — readers index by position and tolerate the absence. |
 | `data/scan-runs.tsv` | Your per-run scan counters (appended by `scan.mjs`, read by `stats.mjs`) |
 | `data/portal-health.tsv` | Consecutive reachability status for scanned portals (appended by `scan.mjs`; statuses: `reachable`, `empty`, `slug_gone`, `network`, `auth`, `server`, `unknown` — the last three joined the vocabulary later, so older files carry only the first four) |
+| `data/company-roster.xlsx` (suggested default path; any path works — passed explicitly to `roster.mjs`) | Your spreadsheet of companies to bulk-ingest (`.xlsx`/`.xlsm`/`.csv`; name + career page URL columns) — read once per `/career-ops roster` run, never modified |
+| `data/roster-telemetry.json` | Live progress snapshot for the current/last `roster.mjs` run (ingest → discover → scan → done), overwritten atomically each phase. Read by `npm run roster:watch` (Go TUI, `dashboard/internal/synthesis.RosterTelemetrySync`) — safe to delete between runs |
 | `data/follow-ups.md` | Your follow-up history |
 | `data/active-interviews.md` | Your active interview processes, incl. inline `[process-friction]` notes (read by `process-quality.mjs`) |
 | `data/agent-inbox.md` | Your append-only request queue drained at session start (written by `agent-inbox.mjs`) |
@@ -68,6 +70,7 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `modes/latex.md` | LaTeX/Overleaf CV export instructions |
 | `modes/add.md` | CV addition (project/paper/role) instructions |
 | `modes/scan.md` | Portal scanner instructions |
+| `modes/roster.md` | Bulk Excel company-roster ingestion instructions (resolve → scan → hand off to `pipeline`) |
 | `modes/batch.md` | Batch processing instructions |
 | `modes/apply.md` | Application assistant instructions |
 | `modes/auto-pipeline.md` | Auto-pipeline instructions |
@@ -128,6 +131,7 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `batch/batch-prompt.md` | Batch worker prompt |
 | `batch/batch-runner.sh` | Batch orchestrator |
 | `dashboard/*` | Go TUI dashboard |
+| `synthesis/*` | TypeScript synthesis pipeline (Extract/Analyze/Synthesize/Tailor/Merge/Compile) backing `synthesize.mjs` — its own npm package (`synthesis/node_modules`, `synthesis/dist`) |
 | `templates/*` | Base templates |
 | `fonts/*` | Self-hosted fonts |
 | `.claude/skills/*` | Skill definitions (Claude Code) |

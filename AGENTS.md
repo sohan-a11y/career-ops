@@ -94,6 +94,8 @@ AI-powered, CLI-agnostic job search automation: pipeline tracking, offer evaluat
 | `generate-pdf.mjs` | Playwright: HTML to PDF |
 | `generate-latex.mjs` | LaTeX CV validator + pdflatex compiler |
 | `scan.mjs` | Zero-token portal scanner (Greenhouse/Ashby/Lever APIs, zero LLM cost) |
+| `roster.mjs` | Bulk company-roster ingestion (`.xlsx`/`.xlsm`/`.csv`) — resolves each row to a scannable ATS board (direct URL detection + `discover-ats.mjs` probing for branded pages), dedupes + writes `portals.yml`, then scopes a scan to just the new companies. Zero-token; hands off to `pipeline` mode for the AI-driven evaluation half. Live progress in `data/roster-telemetry.json`, tailed by `npm run roster:watch` (Go TUI) |
+| `synthesize.mjs` + `synthesis/` | Typed, code-enforced CV tailoring + scoring engine: Extract (`browser-extract.mjs`) → Analyze → [Synthesize ‖ Tailor] (headless `claude -p` workers, same `modes/_shared.md`/`modes/_profile.md` context every mode reads) → Merge (deterministic TypeScript join — immutable dates/company-names pass through by construction, not by trusting the model) → Compile (`build-cv-html.mjs` → `verify-cv-facts.mjs` hard gate → `generate-pdf.mjs`) → **Score** (optional, on by default; headless worker judges the compiled/tailored resume against the JD using the SAME 5-dimension rubric as `modes/_shared.md`, not a competing one). Run `npm run synthesize:build` once after pulling, then `node synthesize.mjs <jd-url-or-file>` (`--no-score` to skip scoring). On a passing score (`Apply`/`Consider`) it prints next-step guidance pointing to `/career-ops apply` — it never opens a browser or fills a form itself; that capability already exists, more maturely, in `modes/apply.md` (knock-out warnings, per-ATS quirks, jurisdiction checks, and a hard rule that never auto-submits). Narrower than `/career-ops pdf` today (no skill-gap gate, HM-audit, template selection, page-count trimming, or tracker/report linkage) — use it when you want the merge step's correctness to be a type-checked invariant rather than an instruction the model follows; use `/career-ops pdf`/`auto-pipeline` for the full-featured interactive flow |
 | `scan-ats-full.mjs` | Reverse-ATS keyword-first scanner over full public ATS datasets (Greenhouse/Lever/Ashby/Workday/iCIMS), filtered by portals.yml `title_filter`/`location_filter` — no company list needed; checkpoints every 500 companies, `--resume` continues an interrupted sweep |
 | `scan-interamt.mjs` | Playwright browser scanner for Interamt.de (German public sector portal — Apache Wicket, no REST API) |
 | `check-liveness.mjs` / `liveness-core.mjs` | Job posting liveness checker + shared logic (expired signals win over generic Apply text) |
@@ -296,6 +298,7 @@ Two separate axes:
 | Asks about application status | `tracker` |
 | Fills out application form | `apply` |
 | Searches for new offers | `scan` |
+| Has a spreadsheet of many companies' career pages and wants them all resolved, scanned, and run through the full evaluate/tailor/track pipeline | `roster` — bulk front door for `scan` + `pipeline`; see `modes/roster.md` |
 | Processes pending URLs | `pipeline` |
 | Wants a fast first-pass filter before full evaluation | `triage` |
 | Batch processes offers | `batch` |

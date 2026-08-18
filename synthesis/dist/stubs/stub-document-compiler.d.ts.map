@@ -1,0 +1,1 @@
+{"version":3,"file":"stub-document-compiler.d.ts","sourceRoot":"","sources":["../../src/stubs/stub-document-compiler.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAEH,OAAO,KAAK,EAAE,iBAAiB,EAAE,gBAAgB,EAAE,MAAM,oCAAoC,CAAC;AAC9F,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,2BAA2B,CAAC;AAEjE,qBAAa,oBAAqB,YAAW,iBAAiB;IACtD,OAAO,CAAC,SAAS,EAAE,eAAe,GAAG,OAAO,CAAC,gBAAgB,CAAC;CAarE"}

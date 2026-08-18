@@ -1,0 +1,1 @@
+{"version":3,"file":"stub-data-extractor.d.ts","sourceRoot":"","sources":["../../src/stubs/stub-data-extractor.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,KAAK,EAAE,cAAc,EAAE,gBAAgB,EAAE,MAAM,iCAAiC,CAAC;AAExF,qBAAa,iBAAkB,YAAW,cAAc;IAChD,OAAO,CAAC,MAAM,EAAE,MAAM,GAAG,OAAO,CAAC,gBAAgB,CAAC;CAkCzD"}

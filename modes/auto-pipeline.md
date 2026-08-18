@@ -54,8 +54,18 @@ Include Block G in the saved report. Add **URL:** {url} and **Legitimacy:** {tie
 
 Read `config/profile.yml`. Check `cv.output_format`:
 
-- If `"latex"`, execute the full pipeline from `modes/latex.md`
-- Otherwise (default), execute the full pipeline from `modes/pdf.md`
+- If `"latex"`, execute the full pipeline from `modes/latex.md` (the typed synthesis engine below has no LaTeX output yet).
+- Otherwise (default): run the typed Dynamic Portfolio Synthesis Pipeline (`career-ops/synthesis/`) instead of `pdf.md`'s prompt-based tailoring — same immutable/mutable merge as everywhere else in this system, but code-enforced rather than an instruction the model follows:
+
+  ```bash
+  node synthesize.mjs {url} --report={report-number} --no-score
+  ```
+
+  - `{report-number}` is the `{###}` reserved in Step 2 — this links the PDF into `data/pdf-index.tsv`, same as every other PDF-generating path.
+  - `--no-score`: Step 1 already scored this posting against `cv.md` via the full A-G evaluation (with real research budget, legitimacy signals, comp analysis) — that score stays authoritative for the tracker and Step 4's gate. Running `synthesize.mjs`'s own Score stage on top would be a redundant second AI pass judging the same fit a second way.
+  - The PDF lands at `output/cv-{candidate}-{company}.pdf`, using the target company from Step 0's extracted JD — never the candidate's own past employer.
+  - **Fallback:** if this fails (e.g. `synthesis/dist/` isn't built — run `npm run synthesize:build` once — or a stage errors), fall back to the full `modes/pdf.md` pipeline instead of leaving the offer with no PDF. Note in the tracker which path produced it only if the fallback fired; otherwise say nothing extra.
+  - Narrower than `pdf.md` today: no skill-gap gate (redundant with the "never fabricate" instruction already in the tailoring prompts), no HM-audit, no page-count trimming warnings, no multi-template edge cases beyond `cv.template` in `config/profile.yml`. If the user specifically asked for one of those, use `pdf.md` directly instead.
 
 ## Step 4 — Draft Application Answers (only if score >= 4.5)
 

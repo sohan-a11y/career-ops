@@ -1,0 +1,23 @@
+{
+  "name": "@career-ops/synthesis",
+  "version": "0.1.0",
+  "description": "Dynamic Portfolio Synthesis Pipeline — async orchestration, state merging, interface boundaries",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "dependencies": {
+    "js-yaml": "^4.3.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.19.43"
+  }
+}
