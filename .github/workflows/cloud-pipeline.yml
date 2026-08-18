@@ -18,14 +18,22 @@ name: career-ops cloud pipeline
 # → "Change visibility" should read Private.
 #
 # ── Required repository secrets (Settings → Secrets and variables → Actions) ──
-#   CV_MD_B64        base64 of your real cv.md          (base64 -w0 cv.md)
-#   PROFILE_YML_B64  base64 of your real config/profile.yml
-#   PORTALS_YML_B64  base64 of your real portals.yml
+#   CV_MD_B64        gzip+base64 of your real cv.md
+#                     (gzip -9 -c cv.md | base64 -w0)
+#   PROFILE_YML_B64  gzip+base64 of your real config/profile.yml
+#   PORTALS_YML_B64  gzip+base64 of your real portals.yml
 #   ANTHROPIC_API_KEY  a real Anthropic API key — the headless claude -p
 #                      workers in batch/batch-runner.sh need this to run
 #                      unattended; this is a DIFFERENT auth path than your
 #                      interactive Claude Code login, and costs real money
 #                      per token same as any other API usage.
+#
+# Why gzip: GitHub Actions secrets are capped at 48KB. portals.yml alone can
+# exceed that pre-compression (a broad title_filter/company list runs ~90KB
+# raw / ~120KB base64 — verified over the limit). gzip -9 brings the same
+# file to ~33KB base64, comfortably under the cap, so all three secrets use
+# the same gzip+base64 encoding for one consistent restore path rather than
+# a special case for just the large one.
 #
 # These three "_B64" secrets exist ONLY to get your private files onto the
 # ephemeral runner for this one run — they are written to disk, used, and
@@ -95,10 +103,10 @@ jobs:
       - name: Restore private user-layer files from secrets
         run: |
           set -euo pipefail
-          echo "${{ secrets.CV_MD_B64 }}" | base64 -d > cv.md
+          echo "${{ secrets.CV_MD_B64 }}" | base64 -d | gunzip > cv.md
           mkdir -p config
-          echo "${{ secrets.PROFILE_YML_B64 }}" | base64 -d > config/profile.yml
-          echo "${{ secrets.PORTALS_YML_B64 }}" | base64 -d > portals.yml
+          echo "${{ secrets.PROFILE_YML_B64 }}" | base64 -d | gunzip > config/profile.yml
+          echo "${{ secrets.PORTALS_YML_B64 }}" | base64 -d | gunzip > portals.yml
           test -s cv.md && test -s config/profile.yml && test -s portals.yml \
             || { echo "::error::one or more restored files is empty — check the secrets are set"; exit 1; }
 
