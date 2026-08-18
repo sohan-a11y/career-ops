@@ -1,0 +1,170 @@
+name: career-ops cloud pipeline
+
+# Runs career-ops's real, existing pipeline on GitHub-hosted infrastructure,
+# triggered externally (e.g. from a Google Apps Script / Gemini Spark job)
+# via the repository_dispatch REST API. Nothing in this file reimplements
+# scanning, scoring, or tailoring — it only checks out the repo and runs the
+# same scripts you already run locally (scan-ats-full.mjs, roster.mjs,
+# batch/batch-runner.sh, jd-skill-gap.mjs).
+#
+# ── HARD PREREQUISITE — READ BEFORE ENABLING ─────────────────────────────
+# This workflow commits reports/, data/applications.md, and scan history
+# back to the repo it runs in. Those files carry your real job-search data
+# (companies, roles, scores, sometimes salary figures). This must ONLY ever
+# run against a PRIVATE fork you own — never against the public upstream
+# santifer/career-ops repo, and never against a public fork. If your fork
+# is public, every report this workflow writes is publicly readable the
+# moment it's pushed. Check: GitHub repo Settings → General → Danger Zone
+# → "Change visibility" should read Private.
+#
+# ── Required repository secrets (Settings → Secrets and variables → Actions) ──
+#   CV_MD_B64        base64 of your real cv.md          (base64 -w0 cv.md)
+#   PROFILE_YML_B64  base64 of your real config/profile.yml
+#   PORTALS_YML_B64  base64 of your real portals.yml
+#   ANTHROPIC_API_KEY  a real Anthropic API key — the headless claude -p
+#                      workers in batch/batch-runner.sh need this to run
+#                      unattended; this is a DIFFERENT auth path than your
+#                      interactive Claude Code login, and costs real money
+#                      per token same as any other API usage.
+#
+# These three "_B64" secrets exist ONLY to get your private files onto the
+# ephemeral runner for this one run — they are written to disk, used, and
+# explicitly deleted (see "Wipe private files") before any step that could
+# log or archive the workspace. They are never committed; .gitignore
+# already excludes all three paths regardless.
+
+on:
+  repository_dispatch:
+    types: [career-ops-run]
+    # Expected client_payload shape (all optional; mode picks which fields matter):
+    #   { "mode": "scan" }
+    #   { "mode": "roster", "roster_url": "https://drive.google.com/uc?id=..." }
+    #   { "mode": "pipeline", "job_urls": [{"url":"https://...","source":"Himalayas","notes":"..."}, "https://plain-url-also-ok"] }
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'scan (zero-token discovery across 5 ATS platforms) | roster (ingest a company spreadsheet) | pipeline (evaluate the job_urls_json input)'
+        required: true
+        default: 'scan'
+        type: choice
+        options: [scan, roster, pipeline]
+      roster_url:
+        description: 'Direct-download URL to a roster .xlsx (roster mode only)'
+        required: false
+      job_urls_json:
+        description: 'JSON array of job URLs (strings) or {url,source,notes} objects (pipeline mode only)'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  # Never two pipeline runs at once — they'd race on report numbers and the
+  # tracker file exactly the way parallel local workers would.
+  group: career-ops-cloud-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      MODE: ${{ github.event.client_payload.mode || inputs.mode || 'scan' }}
+      ROSTER_URL: ${{ github.event.client_payload.roster_url || inputs.roster_url }}
+      # NOTE: toJSON(null) returns the 4-char string "null" (truthy), so a plain
+      # `||` chain across the two event shapes would never fall through to the
+      # workflow_dispatch input — branch on event_name explicitly instead.
+      JOB_URLS_JSON: ${{ github.event_name == 'workflow_dispatch' && (inputs.job_urls_json || '[]') || toJSON(github.event.client_payload.job_urls) }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true # need to push the tracker/reports back
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Install Playwright Chromium (liveness checks + PDF rendering)
+        run: npx playwright install chromium --with-deps
+
+      # ── Restore your private files for this run only ──────────────────
+      - name: Restore private user-layer files from secrets
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.CV_MD_B64 }}" | base64 -d > cv.md
+          mkdir -p config
+          echo "${{ secrets.PROFILE_YML_B64 }}" | base64 -d > config/profile.yml
+          echo "${{ secrets.PORTALS_YML_B64 }}" | base64 -d > portals.yml
+          test -s cv.md && test -s config/profile.yml && test -s portals.yml \
+            || { echo "::error::one or more restored files is empty — check the secrets are set"; exit 1; }
+
+      # ── Mode: scan — zero-token discovery across 5 ATS platforms ──────
+      # No scraping, no per-site custom logic: this already covers
+      # Greenhouse, Lever, Ashby, Workday, and iCIMS via their public
+      # datasets, filtered by portals.yml's title_filter/location_filter.
+      - name: Scan (zero-token, 5 ATS platforms)
+        if: env.MODE == 'scan'
+        run: node scan-ats-full.mjs --since 1
+
+      # ── Mode: roster — ingest an externally-sourced company spreadsheet ─
+      - name: Download roster file
+        if: env.MODE == 'roster'
+        run: curl -sL "$ROSTER_URL" -o /tmp/roster.xlsx
+
+      - name: Roster ingest + resolve + scoped scan
+        if: env.MODE == 'roster'
+        run: node roster.mjs /tmp/roster.xlsx --write --scan
+
+      # ── Bridge step: batch-runner.sh reads batch/batch-input.tsv, not
+      # data/pipeline.md — queue-batch-input.mjs converts whichever mode just
+      # ran into that format, deterministically, zero-LLM (see its header).
+      - name: Queue scan/roster results into batch-input.tsv
+        if: env.MODE == 'scan' || env.MODE == 'roster'
+        run: node queue-batch-input.mjs --source=pipeline
+
+      - name: Queue external job_urls into batch-input.tsv
+        if: env.MODE == 'pipeline'
+        run: node queue-batch-input.mjs --source=json # reads JOB_URLS_JSON from job-level env
+
+      # ── Evaluate whatever is now queued (all three modes converge here) ─
+      # This is the SAME headless-worker mechanism you already use locally
+      # (batch/batch-runner.sh spawning `claude -p` workers) — not a new,
+      # separate scoring path.
+      - name: Run the real evaluation pipeline
+        run: |
+          bash batch/batch-runner.sh --parallel 2
+        continue-on-error: true # a partial batch (e.g. rate-limited) still has results worth committing
+
+      # ── Deterministic ATS-style keyword match, per newly-evaluated report ─
+      # jd-skill-gap.mjs is career-ops's own zero-LLM matcher — this is the
+      # actual "ATS calculates it" step: real keyword extraction from each
+      # JD, classified against your real cv.md into existing/supported/gap.
+      # ats-match-score.mjs turns that three-bucket JSON into the single
+      # percentage a real ATS keyword filter would gate on, and writes a
+      # sidecar file per report so the number survives the run as a real
+      # artifact instead of only living in the Action log.
+      - name: Deterministic ATS skill-gap pass on today's reports
+        run: |
+          for f in $(git diff --name-only --diff-filter=A -- 'reports/*.md' || true); do
+            echo "::group::ATS skill-gap — $f"
+            node ats-match-score.mjs "$f" || true
+            echo "::endgroup::"
+          done
+
+      # ── Wipe private files BEFORE any step that could log/archive them ──
+      - name: Wipe private files
+        if: always()
+        run: rm -f cv.md config/profile.yml portals.yml
+
+      - name: Commit results back to this fork
+        if: always()
+        run: |
+          git config user.name "career-ops-cloud-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports/ data/ output/ 2>/dev/null || true
+          git commit -m "chore: cloud pipeline run ($MODE) $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "nothing to commit"
+          git push
