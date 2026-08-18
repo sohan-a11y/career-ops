@@ -1,10 +1,3 @@
-![GitHub License](https://img.shields.io/github/license/sohan-a11y/career-ops?style=flat-square)
-![GitHub Last Commit](https://img.shields.io/github/last-commit/sohan-a11y/career-ops?style=flat-square)
-![GitHub Stars](https://img.shields.io/github/stars/sohan-a11y/career-ops?style=flat-square)
-![GitHub Forks](https://img.shields.io/github/forks/sohan-a11y/career-ops?style=flat-square)
-
-[![Skills](https://skillicons.dev/icons?i=python,fastapi,react)](https://skillicons.dev)
-
 <p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/wordmark-dark.svg"><img src="docs/wordmark-light.svg" alt="career-ops" width="250" height="56"></picture></p>
 
 <div align="center">
